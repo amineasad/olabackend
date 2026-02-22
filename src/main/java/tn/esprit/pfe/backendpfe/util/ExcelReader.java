@@ -17,7 +17,7 @@ public class ExcelReader {
         List<KpiValue> result = new ArrayList<>();
         DataFormatter formatter = new DataFormatter();
 
-        // ✅ Anti-doublons (même combinaison KPI/pays/mois/année)
+        // Anti-doublons (même combinaison KPI/pays/mois/année)
         Set<String> seen = new HashSet<>();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
@@ -27,24 +27,28 @@ public class ExcelReader {
                 Sheet sheet = workbook.getSheetAt(s);
                 String sheetName = sheet.getSheetName();
 
-                // ✅ Lire seulement KPI_Data_*
-                if (!sheetName.startsWith("KPI_Data_")) continue;
+                // Lire seulement la feuille "Data" (avec ou sans espace)
+                if (!sheetName.trim().equalsIgnoreCase("Data")) continue;
 
                 Row headerRow = sheet.getRow(0);
                 if (headerRow == null) continue;
 
-                int firstMonthCol = 4; // Jan
-                int lastMonthCol = headerRow.getLastCellNum() - 1;
+                int firstMonthCol = 4;  // Jan
+                int lastMonthCol  = 16; // December = col 15, Total = col 16 (sera ignoré)
 
                 for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                     Row row = sheet.getRow(r);
                     if (row == null) continue;
 
+                    // Colonnes corrigées selon la structure réelle du fichier :
+                    // Col 0 = affiliate
+                    // Col 1 = kpi_code
+                    // Col 2 = year
+                    // Col 3 = category
                     String affiliate = formatter.formatCellValue(row.getCell(0), evaluator).trim();
-                    String yearStr   = formatter.formatCellValue(row.getCell(1), evaluator).trim();
-                    String kpiCode   = formatter.formatCellValue(row.getCell(3), evaluator).trim();
-                    String category = formatter.formatCellValue(row.getCell(2), evaluator).trim();
-
+                    String kpiCode   = formatter.formatCellValue(row.getCell(1), evaluator).trim();
+                    String yearStr   = formatter.formatCellValue(row.getCell(2), evaluator).trim();
+                    String category  = formatter.formatCellValue(row.getCell(3), evaluator).trim();
 
                     if (affiliate.isEmpty() || yearStr.isEmpty() || kpiCode.isEmpty()) continue;
 
@@ -53,14 +57,17 @@ public class ExcelReader {
 
                     for (int c = firstMonthCol; c <= lastMonthCol; c++) {
                         String month = formatter.formatCellValue(headerRow.getCell(c), evaluator).trim();
-                        String valueStr = formatter.formatCellValue(row.getCell(c), evaluator).trim();
 
-                        if (month.isEmpty() || valueStr.isEmpty()) continue;
+                        // Ignorer la colonne Total et les colonnes sans header
+                        if (month.isEmpty() || month.equalsIgnoreCase("Total")) continue;
+
+                        String valueStr = formatter.formatCellValue(row.getCell(c), evaluator).trim();
+                        if (valueStr.isEmpty()) continue;
 
                         Double value = tryParseDouble(valueStr);
                         if (value == null) continue;
 
-                        // ✅ clé unique
+                        // Clé unique
                         String key = kpiCode + "|" + affiliate + "|" + month + "|" + year;
                         if (!seen.add(key)) continue; // ignore doublon
 
@@ -71,7 +78,6 @@ public class ExcelReader {
                         kpi.setMonth(month);
                         kpi.setValue(value);
                         kpi.setCategory(category);
-
 
                         result.add(kpi);
                     }
@@ -84,7 +90,7 @@ public class ExcelReader {
 
     private Integer tryParseYear(String s) {
         try {
-            return Integer.parseInt(s);
+            return Integer.parseInt(s.trim());
         } catch (Exception ignored) {
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("(19|20)\\d{2}").matcher(s);
             if (m.find()) return Integer.parseInt(m.group());
@@ -94,7 +100,14 @@ public class ExcelReader {
 
     private Double tryParseDouble(String s) {
         try {
-            return Double.parseDouble(s.replace(" ", "").replace(",", "."));
+            String cleaned = s.replace(" ", "").replace(",", ".");
+
+            // Gérer les pourcentages affichés par Excel (ex: "91.000%" → stocké 0.91)
+            if (cleaned.endsWith("%")) {
+                return Double.parseDouble(cleaned.replace("%", "")) / 100.0;
+            }
+
+            return Double.parseDouble(cleaned);
         } catch (Exception e) {
             return null;
         }

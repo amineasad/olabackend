@@ -8,6 +8,8 @@ import tn.esprit.pfe.backendpfe.repositories.KpiValueRepository;
 import tn.esprit.pfe.backendpfe.util.ExcelReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -16,46 +18,34 @@ public class KpiService {
     private final KpiValueRepository repository;
     private final ExcelReader excelReader;
 
+    // ✅ Ordre chronologique des mois
+    private static final List<String> MONTH_ORDER = List.of(
+            "Jan", "Feb", "Mar", "Apr", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+    );
+
     public KpiService(KpiValueRepository repository, ExcelReader excelReader) {
         this.repository = repository;
         this.excelReader = excelReader;
     }
 
-    /**
-     * Import Excel :
-     * - lit toutes les feuilles
-     * - transforme en KPI mensuels
-     * - supprime l’existant
-     * - insère les nouvelles données
-     */
     public int importExcel(MultipartFile file) throws IOException {
-
-        // 1️⃣ Lire toutes les données Excel
         List<KpiValue> kpis = excelReader.readAllKpis(file);
 
         if (kpis.isEmpty()) {
             throw new RuntimeException("Aucune donnée KPI trouvée dans le fichier");
         }
 
-        // 2️⃣ Nettoyage (MVP)
         repository.deleteAll();
-
-        // 3️⃣ Sauvegarde
         repository.saveAll(kpis);
 
         return kpis.size();
     }
 
-    /**
-     * Récupérer les KPI pour le dashboard
-     */
     public List<KpiValue> getKpis(String affiliate, String month, int year) {
         return repository.findByAffiliateAndMonthAndYear(affiliate, month, year);
     }
 
-    /**
-     * Filtres dynamiques
-     */
     public List<String> getAffiliates() {
         return repository.findDistinctAffiliates();
     }
@@ -64,9 +54,16 @@ public class KpiService {
         return repository.findDistinctYears();
     }
 
+    // ✅ Tri chronologique Jan → Dec en Java (évite l'erreur PostgreSQL avec DISTINCT + ORDER BY CASE)
     public List<String> getMonths(String affiliate, int year) {
-        return repository.findDistinctMonths(affiliate, year);
+        List<String> months = new ArrayList<>(repository.findDistinctMonths(affiliate, year));
+        months.sort(Comparator.comparingInt(m -> {
+            int idx = MONTH_ORDER.indexOf(m);
+            return idx == -1 ? 99 : idx;
+        }));
+        return months;
     }
+
     public List<String> getCategories(String affiliate, int year) {
         return repository.findDistinctCategoriesByAffiliateAndYear(affiliate, year);
     }
@@ -74,6 +71,7 @@ public class KpiService {
     public List<KpiValue> getKpis(String affiliate, String month, int year, String category) {
         return repository.findKpisWithOptionalCategory(affiliate, month, year, category);
     }
+
     public List<KpiAvgDto> getKpisAverage(String affiliate, int year, String category) {
         return repository.avgByKpi(affiliate, year, category).stream()
                 .map(o -> new KpiAvgDto(
@@ -85,5 +83,4 @@ public class KpiService {
                 ))
                 .toList();
     }
-
 }
