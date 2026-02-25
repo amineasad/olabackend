@@ -4,6 +4,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tn.esprit.pfe.backendpfe.dto.ChartSeriesDto;
 import tn.esprit.pfe.backendpfe.entities.KpiValue;
 import tn.esprit.pfe.backendpfe.services.KpiService;
 
@@ -60,5 +61,18 @@ public class KpiController {
         return service.getKpisAverage(affiliate, year, category);
     }
 
-
+    @GetMapping("/graphs/monthly")
+    public ChartSeriesDto monthly(@RequestParam String affiliate,
+                                  @RequestParam int year,
+                                  @RequestParam String kpiCode,
+                                  @RequestParam(required = false) String category) {
+        return service.getMonthlySeries(affiliate, year, kpiCode, category);
+    }
+    @GetMapping("/kpis/series")
+    public Object series(@RequestParam String affiliate,
+                         @RequestParam int year,
+                         @RequestParam String kpiCode,
+                         @RequestParam(required = false) String category) {
+        return service.getSeriesByMonth(affiliate, year, kpiCode, category);
+    }
 }

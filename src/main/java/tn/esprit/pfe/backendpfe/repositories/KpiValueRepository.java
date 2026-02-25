@@ -2,6 +2,7 @@ package tn.esprit.pfe.backendpfe.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import tn.esprit.pfe.backendpfe.entities.KpiValue;
 
 import java.util.List;
@@ -45,7 +46,29 @@ group by k.kpiCode
 order by k.kpiCode
 """)
     List<Object[]> avgByKpi(String affiliate, int year, String category);
+    @Query("""
+  SELECT k.month, AVG(k.value)
+  FROM KpiValue k
+  WHERE k.affiliate = :affiliate
+    AND k.year = :year
+    AND k.kpiCode = :kpiCode
+    AND (:category IS NULL OR :category = 'ALL' OR k.category = :category)
+  GROUP BY k.month
+""")
+    List<Object[]> avgByMonth(String affiliate, int year, String kpiCode, String category);
 
-
+    @Query("""
+  select k.month, avg(k.value)
+  from KpiValue k
+  where k.affiliate = :affiliate
+    and k.year = :year
+    and k.kpiCode = :kpiCode
+    and (:category is null or :category = 'ALL' or k.category = :category)
+  group by k.month
+""")
+    List<Object[]> seriesByMonth(@Param("affiliate") String affiliate,
+                                 @Param("year") int year,
+                                 @Param("kpiCode") String kpiCode,
+                                 @Param("category") String category);
 }
 

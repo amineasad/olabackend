@@ -2,15 +2,14 @@ package tn.esprit.pfe.backendpfe.services;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import tn.esprit.pfe.backendpfe.dto.ChartSeriesDto;
 import tn.esprit.pfe.backendpfe.dto.KpiAvgDto;
 import tn.esprit.pfe.backendpfe.entities.KpiValue;
 import tn.esprit.pfe.backendpfe.repositories.KpiValueRepository;
 import tn.esprit.pfe.backendpfe.util.ExcelReader;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class KpiService {
@@ -82,5 +81,37 @@ public class KpiService {
                         ((Number) o[1]).doubleValue()
                 ))
                 .toList();
+    }
+    public ChartSeriesDto getMonthlySeries(String affiliate, int year, String kpiCode, String category) {
+
+        List<Object[]> rows = repository.avgByMonth(affiliate, year, kpiCode, category);
+
+        Map<String, Double> map = new HashMap<>();
+        for (Object[] r : rows) {
+            map.put((String) r[0], ((Number) r[1]).doubleValue());
+        }
+
+        List<String> labels = MONTH_ORDER.stream().filter(map::containsKey).toList();
+        List<Double> values = labels.stream().map(map::get).toList();
+
+        return new ChartSeriesDto(labels, values);
+    }
+    public ChartSeriesDto getSeriesByMonth(String affiliate, int year, String kpiCode, String category) {
+
+        var rows = repository.seriesByMonth(affiliate, year, kpiCode, category);
+
+        // map month->value
+        java.util.Map<String, Double> map = new java.util.HashMap<>();
+        for (Object[] r : rows) {
+            String m = (String) r[0];
+            Double v = ((Number) r[1]).doubleValue();
+            map.put(m, v);
+        }
+
+        // labels Jan..Dec selon MONTH_ORDER
+        List<String> labels = MONTH_ORDER;
+        List<Double> values = labels.stream().map(m -> map.getOrDefault(m, 0.0)).toList();
+
+        return new ChartSeriesDto(labels, values);
     }
 }
