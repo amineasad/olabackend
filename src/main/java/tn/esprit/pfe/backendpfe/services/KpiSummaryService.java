@@ -38,15 +38,17 @@ public class KpiSummaryService {
 
     private static final Map<String, String> KEY_KPIS = new LinkedHashMap<>();
     static {
-        KEY_KPIS.put("On_time_delivery_rate",    "rate");
-        KEY_KPIS.put("Payment_incident_rate",     "rate");
-        KEY_KPIS.put("Driver_compliance_rate",    "rate");
-        KEY_KPIS.put("Fleet_utilization_rate",    "rate");
-        KEY_KPIS.put("Total_volume_m3",           "volume");
-        KEY_KPIS.put("Unit_Cost_per_m3",          "cost");
-        KEY_KPIS.put("Plan_Unit_Cost_per_m3",     "cost");
-        KEY_KPIS.put("Contamination_incidents",   "count");
-        KEY_KPIS.put("Total_Fleet_OPEX",          "currency");
+        KEY_KPIS.put("On_time_delivery_rate",         "rate");
+        KEY_KPIS.put("Driver_compliance_rate",         "rate");
+        KEY_KPIS.put("Fleet_utilization_rate",         "rate");
+        KEY_KPIS.put("Legal_12h_compliance",           "rate");
+        KEY_KPIS.put("Total_volume_m3",                "volume");
+        KEY_KPIS.put("Unit_Cost_per_m3",               "cost");
+        KEY_KPIS.put("Plan_Unit_Cost_per_m3_EUR",      "cost");     // ✅ nouveau nom
+        KEY_KPIS.put("Total_Fleet_OPEX_EUR",           "currency"); // ✅ nouveau nom
+        KEY_KPIS.put("Delivery Truck Accident",        "count");    // ✅ nouveau
+        KEY_KPIS.put("Monthly Driver Violations",      "count");    // ✅ nouveau
+        KEY_KPIS.put("Spill/Cross-Fuel Incident",      "count");    // ✅ nouveau
     }
 
     public KpiSummaryService(KpiValueRepository kpiRepo) {
@@ -212,9 +214,9 @@ public class KpiSummaryService {
         }
 
         // Écart ACT vs PLAN (pertinent dans les deux modes)
-        if (kpiData.containsKey("Unit_Cost_per_m3") && kpiData.containsKey("Plan_Unit_Cost_per_m3")) {
+        if (kpiData.containsKey("Unit_Cost_per_m3") && kpiData.containsKey("Plan_Unit_Cost_per_m3_EUR")) {
             double[] act  = kpiData.get("Unit_Cost_per_m3");
-            double[] plan = kpiData.get("Plan_Unit_Cost_per_m3");
+            double[] plan = kpiData.get("Plan_Unit_Cost_per_m3_EUR");
 
             double actVal  = monthIdx >= 0 ? act[monthIdx]  : Arrays.stream(act).filter(v->v>0).average().orElse(0);
             double planVal = monthIdx >= 0 ? plan[monthIdx] : Arrays.stream(plan).filter(v->v>0).average().orElse(0);
